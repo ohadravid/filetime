@@ -5,6 +5,11 @@ use std::io;
 use std::os::unix::prelude::*;
 use std::path::Path;
 
+extern {
+    pub fn lutimes(file: *const libc::c_char, times: *const libc::timeval) -> libc::c_int;
+    pub fn futimes(fd: libc::c_int, times: *const libc::timeval) -> libc::c_int;
+}
+
 #[allow(dead_code)]
 pub fn set_file_times(p: &Path, atime: FileTime, mtime: FileTime) -> io::Result<()> {
     set_times(p, Some(atime), Some(mtime), false)
@@ -31,7 +36,7 @@ pub fn set_file_handle_times(
         None => return Ok(()),
     };
     let times = [to_timeval(&atime), to_timeval(&mtime)];
-    let rc = unsafe { libc::futimes(f.as_raw_fd(), times.as_ptr()) };
+    let rc = unsafe { futimes(f.as_raw_fd(), times.as_ptr()) };
     return if rc == 0 {
         Ok(())
     } else {
@@ -78,7 +83,7 @@ pub fn set_times(
     let times = [to_timeval(&atime), to_timeval(&mtime)];
     let rc = unsafe {
         if symlink {
-            libc::lutimes(p.as_ptr(), times.as_ptr())
+            lutimes(p.as_ptr(), times.as_ptr())
         } else {
             libc::utimes(p.as_ptr(), times.as_ptr())
         }
